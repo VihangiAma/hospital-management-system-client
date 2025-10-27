@@ -15,6 +15,8 @@ const DutyShifts = () => {
   const [endTime, setEndTime] = useState("");
   const [remarks, setRemarks] = useState("");
 
+  const [editingShift, setEditingShift] = useState(null);
+
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -60,9 +62,29 @@ const DutyShifts = () => {
 
   const timeSlots = generateTimeSlots();
 
+  const getShiftType = (start) => {
+    if (!start) return "";
+    const hour = parseInt(start.split(":")[0]);
+    if (hour >= 6 && hour < 14) return "Morning";
+    if (hour >= 14 && hour < 22) return "Evening";
+    return "Night";
+  };
+
+  const getShiftColor = (type) => {
+    switch (type) {
+      case "Morning":
+        return "bg-green-100 text-green-700 border-green-300";
+      case "Evening":
+        return "bg-yellow-100 text-yellow-700 border-yellow-300";
+      case "Night":
+        return "bg-blue-100 text-blue-700 border-blue-300";
+      default:
+        return "bg-gray-100 text-gray-700 border-gray-300";
+    }
+  };
+
   const handleCreateShift = async (e) => {
     e.preventDefault();
-
     if (endTime <= startTime) {
       alert("❌ End time must be later than start time.");
       return;
@@ -70,9 +92,9 @@ const DutyShifts = () => {
 
     const res = await fetch("http://localhost:5000/api/shifts", {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}` 
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         staff_id: staffId,
@@ -80,18 +102,72 @@ const DutyShifts = () => {
         shift_date: shiftDate,
         start_time: startTime,
         end_time: endTime,
-        remarks
+        remarks,
       }),
     });
 
     const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.message || "Failed to assign shift");
-      return;
-    }
+    if (!res.ok) return alert(data.message || "Failed to assign shift");
 
     alert("✅ Shift Assigned Successfully");
+    setStaffId("");
+    setDoctorId("");
+    setShiftDate("");
+    setStartTime("");
+    setEndTime("");
+    setRemarks("");
+
+    fetchShifts();
+  };
+
+  const handleDeleteShift = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this shift?")) return;
+
+    const res = await fetch(`http://localhost:5000/api/shifts/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.ok) {
+      alert("🗑️ Shift Deleted");
+      fetchShifts();
+    }
+  };
+
+  const handleEditShift = (shift) => {
+    setEditingShift(shift);
+    setStaffId(shift.staff_id);
+    setDoctorId(shift.doctor_id);
+    setShiftDate(shift.shift_date);
+    setStartTime(shift.start_time);
+    setEndTime(shift.end_time);
+    setRemarks(shift.remarks);
+  };
+
+  const handleUpdateShift = async (e) => {
+    e.preventDefault();
+    const res = await fetch(`http://localhost:5000/api/shifts/${editingShift.shift_id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        staff_id: staffId,
+        doctor_id: doctorId,
+        shift_date: shiftDate,
+        start_time: startTime,
+        end_time: endTime,
+        remarks,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) return alert(data.message || "Failed to update shift");
+
+    alert("✏️ Shift Updated Successfully");
+
+    setEditingShift(null);
     setStaffId("");
     setDoctorId("");
     setShiftDate("");
@@ -129,8 +205,12 @@ const DutyShifts = () => {
 
           {/* Create Shift */}
           {activeTab === "create" && (
-            <form onSubmit={handleCreateShift} className="bg-white p-6 shadow rounded w-full">
+            <form
+              onSubmit={editingShift ? handleUpdateShift : handleCreateShift}
+              className="bg-white p-6 shadow rounded w-full"
+            >
               <div className="grid grid-cols-2 gap-4">
+                {/* Staff */}
                 <div>
                   <label className="font-semibold">Staff</label>
                   <select
@@ -148,6 +228,7 @@ const DutyShifts = () => {
                   </select>
                 </div>
 
+                {/* Doctor */}
                 <div>
                   <label className="font-semibold">Doctor</label>
                   <select
@@ -165,6 +246,7 @@ const DutyShifts = () => {
                   </select>
                 </div>
 
+                {/* Date */}
                 <div>
                   <label className="font-semibold">Shift Date</label>
                   <input
@@ -176,6 +258,7 @@ const DutyShifts = () => {
                   />
                 </div>
 
+                {/* Start */}
                 <div>
                   <label className="font-semibold">Start Time</label>
                   <select
@@ -191,6 +274,7 @@ const DutyShifts = () => {
                   </select>
                 </div>
 
+                {/* End */}
                 <div>
                   <label className="font-semibold">End Time</label>
                   <select
@@ -215,7 +299,7 @@ const DutyShifts = () => {
               ></textarea>
 
               <button className="mt-4 bg-blue-600 text-white py-2 px-6 rounded hover:bg-blue-700">
-                Assign Shift
+                {editingShift ? "Update Shift" : "Assign Shift"}
               </button>
             </form>
           )}
@@ -223,28 +307,54 @@ const DutyShifts = () => {
           {/* View Shifts */}
           {activeTab === "view" && (
             <div className="bg-white p-6 shadow rounded">
-              <table className="w-full border">
+              <table className="w-full border text-sm">
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="p-2 border">Date</th>
                     <th className="p-2 border">Staff</th>
                     <th className="p-2 border">Doctor</th>
-                    <th className="p-2 border">Start</th>
-                    <th className="p-2 border">End</th>
+                    <th className="p-2 border">Shift</th>
                     <th className="p-2 border">Remarks</th>
+                    <th className="p-2 border">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {shifts.map((s) => (
-                    <tr key={s.shift_id}>
-                      <td className="p-2 border">{s.shift_date}</td>
-                      <td className="p-2 border">{s.staff_name}</td>
-                      <td className="p-2 border">{s.doctor_name}</td>
-                      <td className="p-2 border">{s.start_time}</td>
-                      <td className="p-2 border">{s.end_time}</td>
-                      <td className="p-2 border">{s.remarks}</td>
-                    </tr>
-                  ))}
+                  {shifts.map((s) => {
+                    const shiftType = getShiftType(s.start_time);
+                    const shiftClass = getShiftColor(shiftType);
+
+                    return (
+                      <tr key={s.shift_id}>
+                        <td className="p-2 border">{s.shift_date}</td>
+                        <td className="p-2 border">{s.staff_name}</td>
+                        <td className="p-2 border">{s.doctor_name}</td>
+
+                        {/* Shift Label */}
+                        <td className="p-2 border">
+                          <span className={`px-2 py-1 rounded text-xs border ${shiftClass}`}>
+                            {s.start_time} - {s.end_time} ({shiftType})
+                          </span>
+                        </td>
+
+                        <td className="p-2 border">{s.remarks}</td>
+
+                        <td className="p-2 border flex gap-2">
+                          <button
+                            className="text-blue-600 hover:underline"
+                            onClick={() => handleEditShift(s)}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            className="text-red-600 hover:underline"
+                            onClick={() => handleDeleteShift(s.shift_id)}
+                          >
+                            🗑️ Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
