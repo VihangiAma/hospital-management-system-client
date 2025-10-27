@@ -1,4 +1,4 @@
-import { useState } from 'react'
+/*import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
@@ -33,3 +33,39 @@ function App() {
 }
 
 export default App
+*/
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import Login from "./pages/Login";
+import AdminDashboard from "./pages/AdminDashboard";
+import AccountantDashboard from "./pages/AccountantDashboard";
+import PharmacistDashboard from "./pages/PharmacistDashboard";
+import PatientManagement from "./pages/admin/PatientManagement";
+import AppointmentsPage from "./pages/admin/AppointmentsPage";
+import MedicalHistory from "./pages/admin/MedicalHistory";
+import DoctorsPage from "./pages/admin/DoctorsPage";
+import StaffManagement from "./pages/admin/StaffManagement";
+import DutyShifts from "./pages/admin/DutyShifts";
+
+
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/admin-dashboard" element={<AdminDashboard />} />
+      <Route path="/accountant-dashboard" element={<AccountantDashboard />} />
+<Route path="/pharmacist-dashboard" element={<PharmacistDashboard />} />
+<Route path="/admin/patients" element={<PatientManagement />} />
+ <Route path="/admin/appointments" element={<AppointmentsPage />} />
+ <Route path="/admin/patients/:patient_id/history" element={<MedicalHistory />} />
+ <Route path="/admin/doctors" element={<DoctorsPage/>} />
+ <Route path ="/admin/staff" element={<StaffManagement/>}/> 
+ <Route path ="/admin/duty-shifts" element={<DutyShifts/>}/>
+
+
+
+    </Routes>
+  );
+}
