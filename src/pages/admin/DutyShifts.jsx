@@ -16,7 +16,6 @@ const DutyShifts = () => {
   const [remarks, setRemarks] = useState("");
 
   const [editingShift, setEditingShift] = useState(null);
-
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -110,42 +109,24 @@ const DutyShifts = () => {
     if (!res.ok) return alert(data.message || "Failed to assign shift");
 
     alert("✅ Shift Assigned Successfully");
-    setStaffId("");
-    setDoctorId("");
-    setShiftDate("");
-    setStartTime("");
-    setEndTime("");
-    setRemarks("");
-
+    resetForm();
     fetchShifts();
-  };
-
-  const handleDeleteShift = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this shift?")) return;
-
-    const res = await fetch(`http://localhost:5000/api/shifts/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (res.ok) {
-      alert("🗑️ Shift Deleted");
-      fetchShifts();
-    }
   };
 
   const handleEditShift = (shift) => {
     setEditingShift(shift);
+    setActiveTab("create"); // ✅ Automatically open form tab
     setStaffId(shift.staff_id);
     setDoctorId(shift.doctor_id);
     setShiftDate(shift.shift_date);
     setStartTime(shift.start_time);
     setEndTime(shift.end_time);
-    setRemarks(shift.remarks);
+    setRemarks(shift.remarks || "");
   };
 
   const handleUpdateShift = async (e) => {
     e.preventDefault();
+
     const res = await fetch(`http://localhost:5000/api/shifts/${editingShift.shift_id}`, {
       method: "PUT",
       headers: {
@@ -166,7 +147,24 @@ const DutyShifts = () => {
     if (!res.ok) return alert(data.message || "Failed to update shift");
 
     alert("✏️ Shift Updated Successfully");
+    resetForm();
+    fetchShifts();
+  };
 
+  const handleDeleteShift = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this shift?")) return;
+    const res = await fetch(`http://localhost:5000/api/shifts/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.ok) {
+      alert("🗑️ Shift Deleted");
+      fetchShifts();
+    }
+  };
+
+  const resetForm = () => {
     setEditingShift(null);
     setStaffId("");
     setDoctorId("");
@@ -174,8 +172,6 @@ const DutyShifts = () => {
     setStartTime("");
     setEndTime("");
     setRemarks("");
-
-    fetchShifts();
   };
 
   return (
@@ -193,7 +189,7 @@ const DutyShifts = () => {
               onClick={() => setActiveTab("create")}
               className={`pb-2 ${activeTab === "create" ? "border-b-2 border-blue-600 font-semibold" : ""}`}
             >
-              Create Shift
+              {editingShift ? "Edit Shift" : "Create Shift"}
             </button>
             <button
               onClick={() => setActiveTab("view")}
@@ -203,14 +199,13 @@ const DutyShifts = () => {
             </button>
           </div>
 
-          {/* Create Shift */}
+          {/* Create/Edit Form */}
           {activeTab === "create" && (
             <form
               onSubmit={editingShift ? handleUpdateShift : handleCreateShift}
-              className="bg-white p-6 shadow rounded w-full"
+              className="bg-white p-6 shadow rounded w-full transition-all"
             >
               <div className="grid grid-cols-2 gap-4">
-                {/* Staff */}
                 <div>
                   <label className="font-semibold">Staff</label>
                   <select
@@ -228,7 +223,6 @@ const DutyShifts = () => {
                   </select>
                 </div>
 
-                {/* Doctor */}
                 <div>
                   <label className="font-semibold">Doctor</label>
                   <select
@@ -246,7 +240,6 @@ const DutyShifts = () => {
                   </select>
                 </div>
 
-                {/* Date */}
                 <div>
                   <label className="font-semibold">Shift Date</label>
                   <input
@@ -258,7 +251,6 @@ const DutyShifts = () => {
                   />
                 </div>
 
-                {/* Start */}
                 <div>
                   <label className="font-semibold">Start Time</label>
                   <select
@@ -274,7 +266,6 @@ const DutyShifts = () => {
                   </select>
                 </div>
 
-                {/* End */}
                 <div>
                   <label className="font-semibold">End Time</label>
                   <select
@@ -298,9 +289,20 @@ const DutyShifts = () => {
                 onChange={(e) => setRemarks(e.target.value)}
               ></textarea>
 
-              <button className="mt-4 bg-blue-600 text-white py-2 px-6 rounded hover:bg-blue-700">
-                {editingShift ? "Update Shift" : "Assign Shift"}
-              </button>
+              <div className="mt-4 flex gap-3">
+                <button className="bg-blue-600 text-white py-2 px-6 rounded hover:bg-blue-700">
+                  {editingShift ? "Update Shift" : "Assign Shift"}
+                </button>
+                {editingShift && (
+                  <button
+                    type="button"
+                    className="bg-gray-400 text-white py-2 px-6 rounded hover:bg-gray-500"
+                    onClick={resetForm}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </form>
           )}
 
@@ -322,22 +324,17 @@ const DutyShifts = () => {
                   {shifts.map((s) => {
                     const shiftType = getShiftType(s.start_time);
                     const shiftClass = getShiftColor(shiftType);
-
                     return (
                       <tr key={s.shift_id}>
                         <td className="p-2 border">{s.shift_date}</td>
                         <td className="p-2 border">{s.staff_name}</td>
                         <td className="p-2 border">{s.doctor_name}</td>
-
-                        {/* Shift Label */}
                         <td className="p-2 border">
                           <span className={`px-2 py-1 rounded text-xs border ${shiftClass}`}>
                             {s.start_time} - {s.end_time} ({shiftType})
                           </span>
                         </td>
-
                         <td className="p-2 border">{s.remarks}</td>
-
                         <td className="p-2 border flex gap-2">
                           <button
                             className="text-blue-600 hover:underline"

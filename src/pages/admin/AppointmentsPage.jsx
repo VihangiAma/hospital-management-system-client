@@ -1,7 +1,7 @@
 // src/pages/admin/AppointmentsPage.jsx
-import React, { useEffect, useState, Fragment } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
-import AdminSidebar from "../../components/AdminSidebar"; // adjust path if needed
+import AdminSidebar from "../../components/AdminSidebar";
 import Topbar from "../../components/Topbar";
 
 const API = "http://localhost:5000/api";
@@ -29,10 +29,11 @@ export default function AppointmentsPage() {
   const [showView, setShowView] = useState(false);
   const [viewItem, setViewItem] = useState(null);
   const [loading, setLoading] = useState(false);
-  const token = localStorage.getItem("token");
+
+  const token = localStorage.getItem("token") || "";
 
   // form state for add
-  const [form, setForm] = useState({
+  const defaultForm = {
     appointment_code: "",
     patient_id: "",
     doctor_id: "",
@@ -40,7 +41,12 @@ export default function AppointmentsPage() {
     appointment_date: "",
     appointment_time: "",
     notes: "",
-  });
+    status: "Scheduled",
+  };
+  const [form, setForm] = useState(defaultForm);
+
+  // axios auth headers helper
+  const authHeaders = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
     fetchAll();
@@ -53,37 +59,36 @@ export default function AppointmentsPage() {
     // eslint-disable-next-line
   }, [appointments, tab, search, doctorFilter, dateFilter, departmentFilter]);
 
-  // fetch appointments
+  // fetch appointments (backend returns joined patient_name & doctor_name if your backend controller does that)
   const fetchAll = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API}/appointments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get(`${API}/appointments`, { headers: authHeaders });
       setAppointments(res.data || []);
     } catch (err) {
       console.error("Fetch appointments:", err);
-      alert("Error fetching appointments (check backend).");
+      alert("Error fetching appointments — check backend.");
     } finally {
       setLoading(false);
     }
   };
 
-  // fetch doctors & patients for dropdowns
+  // fetch doctors & patients for dropdowns (include auth header)
   const fetchRefs = async () => {
     try {
       const [dRes, pRes] = await Promise.all([
-        axios.get(`${API}/doctors`),
-        axios.get(`${API}/patients`),
+        axios.get(`${API}/doctors`, { headers: authHeaders }),
+        axios.get(`${API}/patients`, { headers: authHeaders }),
       ]);
       setDoctors(dRes.data || []);
       setPatients(pRes.data || []);
     } catch (err) {
       console.error("Fetch refs:", err);
+      // still allow page to load; show message
     }
   };
 
-  // apply front-end filters (server-side is better for large sets)
+  // apply local filters
   const applyFilters = () => {
     let list = [...appointments];
 
@@ -95,7 +100,7 @@ export default function AppointmentsPage() {
       list = list.filter((a) => a.status === tab);
     }
 
-    // search (patient name, code, notes)
+    // search
     if (search.trim()) {
       const s = search.toLowerCase();
       list = list.filter(
@@ -106,17 +111,29 @@ export default function AppointmentsPage() {
       );
     }
 
-    // doctor filter
+    // doctor filter (by id)
     if (doctorFilter) list = list.filter((a) => String(a.doctor_id) === String(doctorFilter));
+
     // department filter
     if (departmentFilter) list = list.filter((a) => (a.department || "").toLowerCase().includes(departmentFilter.toLowerCase()));
+
     // date filter
     if (dateFilter) list = list.filter((a) => a.appointment_date === dateFilter);
 
     setFiltered(list);
   };
 
-  // Auto-generate appointment code APT-0001
+  // helper to get patient/doctor names from ref lists if appointment row lacks joined names
+  const getPatientName = (id) => {
+    const p = patients.find((x) => String(x.patient_id) === String(id));
+    return p ? `${p.first_name} ${p.last_name}` : `#${id}`;
+  };
+  const getDoctorName = (id) => {
+    const d = doctors.find((x) => String(x.doctor_id) === String(id));
+    return d ? d.full_name : `#${id}`;
+  };
+
+  // Auto-generate appointment code
   const genAppointmentCode = () => {
     const max = appointments.length ? Math.max(...appointments.map((a) => a.appointment_id || 0)) : 0;
     const next = max + 1;
@@ -125,7 +142,6 @@ export default function AppointmentsPage() {
 
   // Create appointment
   const handleSave = async () => {
-    // basic validation
     if (!form.patient_id || !form.doctor_id || !form.appointment_date || !form.appointment_time) {
       return alert("Please fill patient, doctor, date and time.");
     }
@@ -133,21 +149,22 @@ export default function AppointmentsPage() {
       setLoading(true);
       // ensure code
       const code = form.appointment_code || genAppointmentCode();
-      const payload = { ...form, appointment_code: code };
-      await axios.post(`${API}/appointments`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setShowAdd(false);
-      setForm({
-        appointment_code: "",
-        patient_id: "",
-        doctor_id: "",
-        department: "",
-        appointment_date: "",
-        appointment_time: "",
-        notes: "",
-      });
-      fetchAll();
+      const payload = {
+        ...form,
+        appointment_code: code,
+        patient_id: parseInt(form.patient_id, 10),
+        doctor_id: parseInt(form.doctor_id, 10),
+        status: form.status || "Scheduled",
+      };
+
+      const res = await axios.post(`${API}/appointments`, payload, { headers: authHeaders });
+      if (res.status === 201 || res.status === 200) {
+        setShowAdd(false);
+        setForm(defaultForm);
+        fetchAll(); // refresh with server-side joined names
+      } else {
+        alert("Failed to create appointment.");
+      }
     } catch (err) {
       console.error("Create appt:", err);
       alert(err?.response?.data?.message || "Error creating appointment.");
@@ -159,9 +176,7 @@ export default function AppointmentsPage() {
   // update status
   const updateStatus = async (id, newStatus) => {
     try {
-      await axios.put(`${API}/appointments/${id}`, { status: newStatus }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.put(`${API}/appointments/${id}`, { status: newStatus }, { headers: authHeaders });
       fetchAll();
     } catch (err) {
       console.error("Update status:", err);
@@ -173,9 +188,7 @@ export default function AppointmentsPage() {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete appointment?")) return;
     try {
-      await axios.delete(`${API}/appointments/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(`${API}/appointments/${id}`, { headers: authHeaders });
       fetchAll();
     } catch (err) {
       console.error("Delete appt:", err);
@@ -189,7 +202,6 @@ export default function AppointmentsPage() {
     setShowView(true);
   };
 
-  // small subcomponents for clarity
   const StatusBadge = ({ status }) => {
     const classes =
       status === "Scheduled"
@@ -202,7 +214,6 @@ export default function AppointmentsPage() {
 
   const formatDate = (d) => (d ? d : "-");
 
-  // Render
   return (
     <div className="flex">
       <AdminSidebar />
@@ -218,9 +229,8 @@ export default function AppointmentsPage() {
             <div className="flex gap-3 items-center">
               <button
                 onClick={() => {
-                  setForm((f) => ({ ...f, appointment_code: genAppointmentCode() }));
+                  setForm((f) => ({ ...defaultForm, appointment_code: genAppointmentCode() }));
                   setShowAdd(true);
-                  setEditDefaults();
                 }}
                 className="bg-blue-600 text-white px-4 py-2 rounded shadow"
               >
@@ -295,8 +305,8 @@ export default function AppointmentsPage() {
                   filtered.map((a) => (
                     <tr key={a.appointment_id} className="border-b">
                       <td className="p-3">{a.appointment_code}</td>
-                      <td className="p-3">{a.patient_name || `#${a.patient_id}`}</td>
-                      <td className="p-3">{a.doctor_name || `#${a.doctor_id}`}</td>
+                      <td className="p-3">{a.patient_name || getPatientName(a.patient_id)}</td>
+                      <td className="p-3">{a.doctor_name || getDoctorName(a.doctor_id)}</td>
                       <td className="p-3">{a.department}</td>
                       <td className="p-3">{formatDate(a.appointment_date)}</td>
                       <td className="p-3">{a.appointment_time ? a.appointment_time.substring(0,5) : "-"}</td>
@@ -336,7 +346,7 @@ export default function AppointmentsPage() {
           <div className="grid grid-cols-2 gap-3">
             <label className="col-span-2">
               <div className="text-sm font-semibold mb-1">Appointment Code</div>
-              <input className="w-full border p-2 rounded" value={form.appointment_code} onChange={(e)=> setForm({...form, appointment_code: e.target.value})} placeholder={genAppointmentCode()} />
+              <input className="w-full border p-2 rounded" value={form.appointment_code || genAppointmentCode()} onChange={(e)=> setForm({...form, appointment_code: e.target.value})} />
             </label>
 
             <label>
@@ -387,8 +397,8 @@ export default function AppointmentsPage() {
       {showView && viewItem && (
         <Modal title={`Appointment ${viewItem.appointment_code}`} onClose={() => setShowView(false)}>
           <div className="space-y-3">
-            <div><strong>Patient:</strong> {viewItem.patient_name || viewItem.patient_id}</div>
-            <div><strong>Doctor:</strong> {viewItem.doctor_name || viewItem.doctor_id}</div>
+            <div><strong>Patient:</strong> {viewItem.patient_name || getPatientName(viewItem.patient_id)}</div>
+            <div><strong>Doctor:</strong> {viewItem.doctor_name || getDoctorName(viewItem.doctor_id)}</div>
             <div><strong>Department:</strong> {viewItem.department}</div>
             <div><strong>Date:</strong> {viewItem.appointment_date}</div>
             <div><strong>Time:</strong> {viewItem.appointment_time}</div>
