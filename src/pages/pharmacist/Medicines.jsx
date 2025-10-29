@@ -31,7 +31,7 @@ const Medicines = () => {
 
   const fetchMedicines = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/medicines", {
+      const res = await axios.get("http://localhost:5000/api/pharmacy/medicines", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMedicines(res.data);
@@ -42,7 +42,7 @@ const Medicines = () => {
 
   const fetchSuppliers = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/suppliers", {
+      const res = await axios.get("http://localhost:5000/api/pharmacy/suppliers", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSuppliers(res.data);
@@ -86,7 +86,7 @@ const Medicines = () => {
 
     if (confirm.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:5000/api/medicines/${id}`, {
+        await axios.delete(`http://localhost:5000/api/pharmacy/medicines/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         Swal.fire("Deleted!", "Medicine deleted successfully.", "success");
@@ -101,13 +101,13 @@ const Medicines = () => {
     try {
       if (editMode) {
         await axios.put(
-          `http://localhost:5000/api/medicines/${formData.medicine_id}`,
+          `http://localhost:5000/api/pharmacy/medicines/${formData.medicine_id}`,
           formData,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         Swal.fire("Updated!", "Medicine updated successfully.", "success");
       } else {
-        await axios.post("http://localhost:5000/api/medicines", formData, {
+        await axios.post("http://localhost:5000/api/pharmacy/medicines", formData, {
           headers: { Authorization: `Bearer ${token}` },
         });
         Swal.fire("Added!", "Medicine added successfully.", "success");

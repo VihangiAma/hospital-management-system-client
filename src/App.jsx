@@ -46,6 +46,11 @@ import MedicalHistory from "./pages/admin/MedicalHistory";
 import DoctorsPage from "./pages/admin/DoctorsPage";
 import StaffManagement from "./pages/admin/StaffManagement";
 import DutyShifts from "./pages/admin/DutyShifts";
+import MedicineStock from "./pages/pharmacist/Medicines";
+import LowStockAlert from "./pages/pharmacist/LowStockAlert";
+import IssueMedicineForm from "./pages/pharmacist/IssueMedicinePage";
+import PurchaseOrderPage from "./pages/pharmacist/PurchaseOrderPage";
+import ManageSuppliersPage from "./pages/pharmacist/ManageSuppliersPage";
 
 
 
@@ -63,6 +68,11 @@ export default function App() {
  <Route path="/admin/doctors" element={<DoctorsPage/>} />
  <Route path ="/admin/staff" element={<StaffManagement/>}/> 
  <Route path ="/admin/duty-shifts" element={<DutyShifts/>}/>
+<Route path="/pharmacy/medicine-stock" element={<MedicineStock />} />
+<Route path="/pharmacy/alerts" element={<LowStockAlert />} />
+<Route path="/pharmacy/issue-medicine" element={<IssueMedicineForm />} />
+<Route path="/pharmacy/purchase-orders" element={<PurchaseOrderPage />} />
+<Route path="pharmacy/manage-suppliers" element={<ManageSuppliersPage />} />
 
 
 
