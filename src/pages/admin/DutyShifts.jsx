@@ -52,8 +52,7 @@ const DutyShifts = () => {
     const times = [];
     for (let hour = 0; hour < 24; hour++) {
       for (let min of ["00", "30"]) {
-        const time = `${hour.toString().padStart(2, "0")}:${min}`;
-        times.push(time);
+        times.push(`${hour.toString().padStart(2, "0")}:${min}`);
       }
     }
     return times;
@@ -84,6 +83,12 @@ const DutyShifts = () => {
 
   const handleCreateShift = async (e) => {
     e.preventDefault();
+
+    if (!staffId && !doctorId) {
+      alert("❌ Please select at least a staff member or a doctor.");
+      return;
+    }
+
     if (endTime <= startTime) {
       alert("❌ End time must be later than start time.");
       return;
@@ -96,8 +101,8 @@ const DutyShifts = () => {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        staff_id: staffId,
-        doctor_id: doctorId,
+        staff_id: staffId || null,
+        doctor_id: doctorId || null,
         shift_date: shiftDate,
         start_time: startTime,
         end_time: endTime,
@@ -115,7 +120,7 @@ const DutyShifts = () => {
 
   const handleEditShift = (shift) => {
     setEditingShift(shift);
-    setActiveTab("create"); // ✅ Automatically open form tab
+    setActiveTab("create");
     setStaffId(shift.staff_id);
     setDoctorId(shift.doctor_id);
     setShiftDate(shift.shift_date);
@@ -127,6 +132,11 @@ const DutyShifts = () => {
   const handleUpdateShift = async (e) => {
     e.preventDefault();
 
+    if (!staffId && !doctorId) {
+      alert("❌ Please select at least a staff member or a doctor.");
+      return;
+    }
+
     const res = await fetch(`http://localhost:5000/api/shifts/${editingShift.shift_id}`, {
       method: "PUT",
       headers: {
@@ -134,8 +144,8 @@ const DutyShifts = () => {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        staff_id: staffId,
-        doctor_id: doctorId,
+        staff_id: staffId || null,
+        doctor_id: doctorId || null,
         shift_date: shiftDate,
         start_time: startTime,
         end_time: endTime,
@@ -207,12 +217,11 @@ const DutyShifts = () => {
             >
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-semibold">Staff</label>
+                  <label className="font-semibold">Staff (Optional)</label>
                   <select
                     className="border p-2 w-full mt-1 rounded"
                     value={staffId}
                     onChange={(e) => setStaffId(e.target.value)}
-                    required
                   >
                     <option value="">Select Staff</option>
                     {staff.map((s) => (
@@ -224,12 +233,11 @@ const DutyShifts = () => {
                 </div>
 
                 <div>
-                  <label className="font-semibold">Doctor</label>
+                  <label className="font-semibold">Doctor (Optional)</label>
                   <select
                     className="border p-2 w-full mt-1 rounded"
                     value={doctorId}
                     onChange={(e) => setDoctorId(e.target.value)}
-                    required
                   >
                     <option value="">Select Doctor</option>
                     {doctors.map((d) => (
@@ -327,8 +335,8 @@ const DutyShifts = () => {
                     return (
                       <tr key={s.shift_id}>
                         <td className="p-2 border">{s.shift_date}</td>
-                        <td className="p-2 border">{s.staff_name}</td>
-                        <td className="p-2 border">{s.doctor_name}</td>
+                        <td className="p-2 border">{s.staff_name || "-"}</td>
+                        <td className="p-2 border">{s.doctor_name || "-"}</td>
                         <td className="p-2 border">
                           <span className={`px-2 py-1 rounded text-xs border ${shiftClass}`}>
                             {s.start_time} - {s.end_time} ({shiftType})

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import AdminSidebar from "../../components/AdminSidebar";
-import Topbar from "../../components/Topbar";
 
 const DepartmentsPage = () => {
   const [departments, setDepartments] = useState([]);
@@ -26,7 +25,6 @@ const DepartmentsPage = () => {
       console.error("Error fetching departments:", err);
     }
   };
-
   useEffect(() => {
     fetchDepartments();
   }, []);

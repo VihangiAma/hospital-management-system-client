@@ -18,8 +18,6 @@ export default function ReportsPage() {
   const fetchReports = async () => {
     try {
       setLoading(true);
-
-      // ✅ Fixed endpoint paths
       const [dailyRes, monthlyRes] = await Promise.all([
         axios.get(`${API}/billing/reports/daily`, {
           headers: { Authorization: `Bearer ${token()}` },
@@ -28,7 +26,6 @@ export default function ReportsPage() {
           headers: { Authorization: `Bearer ${token()}` },
         }),
       ]);
-
       setDaily(dailyRes.data || []);
       setMonthly(monthlyRes.data || []);
     } catch (err) {
@@ -38,6 +35,9 @@ export default function ReportsPage() {
       setLoading(false);
     }
   };
+
+  // Helper for formatting
+  const formatAmount = (value) => Number(value || 0).toFixed(2);
 
   return (
     <div className="flex">
@@ -67,16 +67,24 @@ export default function ReportsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {daily.map((row, i) => (
-                        <tr key={i} className="border-b hover:bg-gray-50">
-                          <td className="p-3">{row.report_date || row.date}</td>
-                          <td className="p-3">{Number(row.total_revenue).toFixed(2)}</td>
-                          <td className="p-3">{Number(row.total_expenses).toFixed(2)}</td>
-                          <td className="p-3 font-semibold text-green-600">
-                            {Number(row.total_revenue - row.total_expenses).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
+                      {daily.map((row, i) => {
+                        const revenue = row.total_billed || 0;
+                        const expenses = 0; // replace later if you add expenses table
+                        const profit = (row.total_paid || 0) - expenses;
+
+                        return (
+                          <tr key={i} className="border-b hover:bg-gray-50">
+                            <td className="p-3">
+                              {new Date(row.report_date).toLocaleDateString()}
+                            </td>
+                            <td className="p-3">{formatAmount(revenue)}</td>
+                            <td className="p-3">{formatAmount(expenses)}</td>
+                            <td className="p-3 font-semibold text-green-600">
+                              {formatAmount(profit)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -98,16 +106,22 @@ export default function ReportsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {monthly.map((row, i) => (
-                        <tr key={i} className="border-b hover:bg-gray-50">
-                          <td className="p-3">{row.month_name || row.month}</td>
-                          <td className="p-3">{Number(row.total_revenue).toFixed(2)}</td>
-                          <td className="p-3">{Number(row.total_expenses).toFixed(2)}</td>
-                          <td className="p-3 font-semibold text-green-600">
-                            {Number(row.total_revenue - row.total_expenses).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
+                      {monthly.map((row, i) => {
+                        const revenue = row.total_billed || 0;
+                        const expenses = 0;
+                        const profit = (row.total_paid || 0) - expenses;
+
+                        return (
+                          <tr key={i} className="border-b hover:bg-gray-50">
+                            <td className="p-3">{row.report_month}</td>
+                            <td className="p-3">{formatAmount(revenue)}</td>
+                            <td className="p-3">{formatAmount(expenses)}</td>
+                            <td className="p-3 font-semibold text-green-600">
+                              {formatAmount(profit)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}

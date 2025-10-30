@@ -72,6 +72,11 @@ export default function DoctorsPage() {
       console.error("Fetch departments error:", err);
     }
   };
+  useEffect(() => {
+  fetchDoctors();
+  fetchDepartments(); // ✅ load departments when page loads
+}, []);
+
 
   const openAdd = () => {
     setEditMode(false);
@@ -373,22 +378,26 @@ export default function DoctorsPage() {
 
                 {/* ✅ Department dropdown */}
                 <div>
-                  <label className="block text-sm">Department</label>
-                  <select
-                    className="w-full border p-2 rounded"
-                    value={form.department}
-                    onChange={(e) =>
-                      setForm({ ...form, department: e.target.value })
-                    }
-                  >
-                    <option value="">Select Department</option>
-                    {departments.map((dept) => (
-                      <option key={dept.department_id} value={dept.department_name}>
-                        {dept.department_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+  <label className="block text-sm">Department</label>
+  <select
+    className="w-full border p-2 rounded"
+    value={form.department}
+    onChange={(e) => setForm({ ...form, department: e.target.value })}
+    required
+  >
+    <option value="">Select Department</option>
+    {departments.length > 0 ? (
+      departments.map((dept) => (
+        <option key={dept.department_id} value={dept.name}>
+          {dept.name}
+        </option>
+      ))
+    ) : (
+      <option disabled>No departments available</option>
+    )}
+  </select>
+</div>
+
 
                 <div>
                   <label className="block text-sm">Start Time</label>

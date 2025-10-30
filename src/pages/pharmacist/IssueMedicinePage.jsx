@@ -1,199 +1,225 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
+import PharmacistSidebar from "../../components/PharmacistSidebar";
+import PharmacistTopbar from "../../components/PharmacistTopbar";
 
 const IssueMedicinePage = () => {
+  const [patients, setPatients] = useState([]);
+  const [medicines, setMedicines] = useState([]);
+  const [issued, setIssuedMedicines] = useState([]);
+  
+
+  const pharmacist = JSON.parse(localStorage.getItem("username")); // assuming your pharmacist data is stored after login
+
   const [formData, setFormData] = useState({
     patient_id: "",
     prescription_id: "",
     medicine_id: "",
     quantity: "",
+    issue_date: new Date().toISOString().split("T")[0], // default to today
+    issued_by: pharmacist?._id || "",
   });
-  const [issuedList, setIssuedList] = useState([]);
-  const [medicines, setMedicines] = useState([]);
-  const [patients, setPatients] = useState([]);
 
-  // ✅ Fetch data
-  useEffect(() => {
-    fetchMedicines();
-    fetchPatients();
-    fetchIssuedMedicines();
-  }, []);
-
-  const token = localStorage.getItem("token");
-
-  const fetchMedicines = async () => {
+  // ✅ Load dropdown data
+ useEffect(() => {
+  const fetchData = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/pharmacy/medicines", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMedicines(res.data);
-    } catch (err) {
-      console.error("Error fetching medicines:", err);
+      const token = localStorage.getItem("token");
+    const headers = { Authorization: `Bearer ${token}` };
+      const [patientsRes, medicinesRes, issuedRes] = await Promise.all([
+        axios.get("http://localhost:5000/api/patients", { headers }),
+        axios.get("http://localhost:5000/api/pharmacy/medicines", { headers }),
+        axios.get("http://localhost:5000/api/pharmacy/medicines/issued", { headers }),
+      ]);
+
+      setPatients(patientsRes.data);
+      setMedicines(medicinesRes.data);
+      setIssuedMedicines(issuedRes.data);
+    } catch (error) {
+      console.error("Error loading data:", error);
     }
   };
 
-  const fetchPatients = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/patients", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setPatients(res.data);
-    } catch (err) {
-      console.error("Error fetching patients:", err);
-    }
+  fetchData();
+}, []);
+
+
+  // ✅ Handle input change
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const fetchIssuedMedicines = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/pharmacy/medicines/issued", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setIssuedList(res.data);
-    } catch (err) {
-      console.error("Error fetching issued medicines:", err);
-    }
-  };
-
-  // ✅ Handle form submit
+  // ✅ Handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(
-        "http://localhost:5000/api/pharmacy/medicines/issue",
-        {
-          ...formData,
-          issued_by: 4, // pharmacist user_id
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
+      await axios.post("http://localhost:5000/api/issued-medicines", formData);
       Swal.fire("✅ Success", "Medicine issued successfully!", "success");
+
+      // Refresh table
+      const updated = await axios.get("http://localhost:5000/api/issued-medicines");
+      setIssued(updated.data);
+
+      // Reset form
       setFormData({
         patient_id: "",
         prescription_id: "",
         medicine_id: "",
         quantity: "",
+        issue_date: new Date().toISOString().split("T")[0],
+        issued_by: pharmacist?._id || "",
       });
-      fetchIssuedMedicines(); // refresh table
-    } catch (err) {
-      Swal.fire("❌ Error", err.response?.data?.message || "Failed to issue medicine", "error");
+    } catch (error) {
+      console.error("Error issuing medicine:", error);
+      Swal.fire("❌ Error", "Failed to issue medicine", "error");
     }
   };
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold text-red-700 mb-4">💊 Issue Medicine</h1>
+    <div className="flex">
+      <PharmacistSidebar />
+      <div className="flex-1 ml-64 p-6">
+        <PharmacistTopbar />
+        <h1 className="text-2xl font-bold mb-4">Medicine Management</h1>
 
-      {/* Issue Form */}
+      {/* FORM */}
       <form
         onSubmit={handleSubmit}
-        className="bg-white shadow-md rounded-lg p-4 mb-8 grid grid-cols-2 gap-4"
+        className="grid grid-cols-2 gap-6 bg-white shadow-md p-6 rounded-2xl"
       >
         <div>
-          <label className="block font-semibold mb-1">Patient</label>
+          <label className="block mb-1 text-gray-700 font-medium">Patient</label>
           <select
-            className="w-full border rounded p-2"
+            name="patient_id"
             value={formData.patient_id}
-            onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
+            onChange={handleChange}
             required
+            className="w-full border p-2 rounded-md"
           >
-            <option value="">-- Select Patient --</option>
-            {patients.map((p) => (
-              <option key={p.patient_id} value={p.patient_id}>
-                {p.name}
-              </option>
-            ))}
+            <option value="">Select Patient</option>
+            {Array.isArray(patients) &&
+              patients.map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.name}
+                </option>
+              ))}
           </select>
         </div>
 
         <div>
-          <label className="block font-semibold mb-1">Prescription ID</label>
+          <label className="block mb-1 text-gray-700 font-medium">
+            Prescription ID
+          </label>
           <input
-            type="number"
-            className="w-full border rounded p-2"
+            type="text"
+            name="prescription_id"
             value={formData.prescription_id}
-            onChange={(e) => setFormData({ ...formData, prescription_id: e.target.value })}
+            onChange={handleChange}
             required
+            className="w-full border p-2 rounded-md"
           />
         </div>
 
         <div>
-          <label className="block font-semibold mb-1">Medicine</label>
+          <label className="block mb-1 text-gray-700 font-medium">Medicine</label>
           <select
-            className="w-full border rounded p-2"
+            name="medicine_id"
             value={formData.medicine_id}
-            onChange={(e) => setFormData({ ...formData, medicine_id: e.target.value })}
+            onChange={handleChange}
             required
+            className="w-full border p-2 rounded-md"
           >
-            <option value="">-- Select Medicine --</option>
-            {medicines.map((m) => (
-              <option key={m.medicine_id} value={m.medicine_id}>
-                {m.name}
-              </option>
-            ))}
+            <option value="">Select Medicine</option>
+            {Array.isArray(medicines) &&
+              medicines.map((m) => (
+                <option key={m._id} value={m._id}>
+                  {m.name}
+                </option>
+              ))}
           </select>
         </div>
 
         <div>
-          <label className="block font-semibold mb-1">Quantity</label>
+          <label className="block mb-1 text-gray-700 font-medium">Quantity</label>
           <input
             type="number"
-            className="w-full border rounded p-2"
+            name="quantity"
             value={formData.quantity}
-            onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+            onChange={handleChange}
             required
+            min="1"
+            className="w-full border p-2 rounded-md"
           />
         </div>
 
-        <div className="col-span-2">
+        <div>
+          <label className="block mb-1 text-gray-700 font-medium">Issue Date</label>
+          <input
+            type="date"
+            name="issue_date"
+            value={formData.issue_date}
+            onChange={handleChange}
+            required
+            className="w-full border p-2 rounded-md"
+          />
+        </div>
+
+        <div>
+          <label className="block mb-1 text-gray-700 font-medium">
+            Issued By (Pharmacist)
+          </label>
+          <input
+            type="text"
+            value={pharmacist?.name || "Unknown"}
+            disabled
+            className="w-full border p-2 rounded-md bg-gray-100 cursor-not-allowed"
+          />
+        </div>
+
+        <div className="col-span-2 flex justify-end mt-4">
           <button
             type="submit"
-            className="bg-red-700 text-white px-4 py-2 rounded hover:bg-red-800 transition"
+            className="bg-[#B30000] text-white px-6 py-2 rounded-lg hover:bg-red-700 transition"
           >
             Issue Medicine
           </button>
         </div>
       </form>
 
-      {/* Issued Medicines List */}
-      <div className="bg-white shadow-md rounded-lg p-4">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">📋 Issued Medicines List</h2>
-        <table className="w-full border-collapse border border-gray-300 text-sm">
-          <thead className="bg-gray-200">
+      {/* ISSUED MEDICINES TABLE */}
+      <div className="mt-10">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          Issued Medicines
+        </h2>
+        <table className="w-full border text-sm text-left bg-white rounded-lg shadow">
+          <thead className="bg-gray-100">
             <tr>
-              <th className="border p-2">Issue ID</th>
-              <th className="border p-2">Date</th>
-              <th className="border p-2">Patient</th>
-              <th className="border p-2">Medicine</th>
-              <th className="border p-2">Prescription</th>
-              <th className="border p-2">Quantity</th>
-              <th className="border p-2">Issued By</th>
+              <th className="p-2 border">Patient</th>
+              <th className="p-2 border">Prescription ID</th>
+              <th className="p-2 border">Medicine</th>
+              <th className="p-2 border">Quantity</th>
+              <th className="p-2 border">Issue Date</th>
+              <th className="p-2 border">Issued By</th>
             </tr>
           </thead>
           <tbody>
-            {issuedList.length > 0 ? (
-              issuedList.map((i) => (
-                <tr key={i.issue_id} className="text-center hover:bg-gray-100">
-                  <td className="border p-2">{i.issue_id}</td>
-                  <td className="border p-2">{i.issue_date}</td>
-                  <td className="border p-2">{i.patient_name}</td>
-                  <td className="border p-2">{i.medicine_name}</td>
-                  <td className="border p-2">{i.prescription_id}</td>
-                  <td className="border p-2">{i.quantity}</td>
-                  <td className="border p-2">{i.issued_by}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="7" className="text-center text-gray-500 p-3">
-                  No issued medicines found.
+            {issued.map((item) => (
+              <tr key={item._id}>
+                <td className="p-2 border">{item.patient_id?.name || "N/A"}</td>
+                <td className="p-2 border">{item.prescription_id}</td>
+                <td className="p-2 border">{item.medicine_id?.name || "N/A"}</td>
+                <td className="p-2 border">{item.quantity}</td>
+                <td className="p-2 border">
+                  {new Date(item.issue_date).toLocaleDateString()}
                 </td>
+                <td className="p-2 border">{item.issued_by?.name || "N/A"}</td>
               </tr>
-            )}
+            ))}
           </tbody>
         </table>
       </div>
+    </div>
     </div>
   );
 };
