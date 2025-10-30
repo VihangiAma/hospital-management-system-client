@@ -40,6 +40,12 @@ const Sidebar = () => {
             🕒 <span className="ml-2">Duty Shifts</span>
           </Link>
         </li>
+        <li>
+          <Link to="/admin/departments" className="flex items-center p-3 hover:bg-gray-200">
+           
+🏥 <span className="ml-2">Departments </span>
+          </Link>
+        </li>
         
       </ul>
     </div>

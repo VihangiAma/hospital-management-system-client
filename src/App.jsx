@@ -51,6 +51,11 @@ import LowStockAlert from "./pages/pharmacist/LowStockAlert";
 import IssueMedicineForm from "./pages/pharmacist/IssueMedicinePage";
 import PurchaseOrderPage from "./pages/pharmacist/PurchaseOrderPage";
 import ManageSuppliersPage from "./pages/pharmacist/ManageSuppliersPage";
+import BillingPage from "./pages/accountant/BillingPage";
+import PaymentsPage from "./pages/accountant/PayementsPage";
+import ReportsPage from "./pages/accountant/ReportsPage";
+import InsuranceClaimsPage from "./pages/accountant/InsuranceClaimsPage";
+import DepartmentsPage from "./pages/admin/DepartmentsPage";
 
 
 
@@ -73,7 +78,12 @@ export default function App() {
 <Route path="/pharmacy/issue-medicine" element={<IssueMedicineForm />} />
 <Route path="/pharmacy/purchase-orders" element={<PurchaseOrderPage />} />
 <Route path="pharmacy/manage-suppliers" element={<ManageSuppliersPage />} />
-
+<Route path="/accountant-dashboard" element={<AccountantDashboard />} />
+<Route path="/accountant/billing" element={<BillingPage />} />
+<Route path="/accountant/payments" element={<PaymentsPage />} />
+<Route path="/accountant/reports" element={<ReportsPage />} />
+<Route path="/accountant/insurance-claims" element={<InsuranceClaimsPage />} />
+<Route path="/admin/departments" element={<DepartmentsPage />} /> 
 
 
     </Routes>

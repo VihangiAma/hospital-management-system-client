@@ -10,14 +10,14 @@ const SPECIALIZATIONS = [
   "Dermatologist",
   "Dentist",
   "Neurologist",
-  "Other"
+  "Other",
 ];
 
 export default function DoctorsPage() {
   const [doctors, setDoctors] = useState([]);
+  const [departments, setDepartments] = useState([]); // ✅ new state
   const [loading, setLoading] = useState(true);
 
-  // Modal state
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({
@@ -30,13 +30,14 @@ export default function DoctorsPage() {
     department: "",
     start_time: "",
     end_time: "",
-    status: "Available"
+    status: "Available",
   });
 
   const token = localStorage.getItem("token");
 
   useEffect(() => {
     fetchDoctors();
+    fetchDepartments(); // ✅ load departments on mount
   }, []);
 
   const fetchDoctors = async () => {
@@ -55,6 +56,23 @@ export default function DoctorsPage() {
     }
   };
 
+  // ✅ Fetch Departments
+  const fetchDepartments = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/departments", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDepartments(data);
+      } else {
+        console.error("Failed to fetch departments");
+      }
+    } catch (err) {
+      console.error("Fetch departments error:", err);
+    }
+  };
+
   const openAdd = () => {
     setEditMode(false);
     setForm({
@@ -67,24 +85,28 @@ export default function DoctorsPage() {
       department: "",
       start_time: "",
       end_time: "",
-      status: "Available"
+      status: "Available",
     });
     setShowModal(true);
   };
 
   const openEdit = (doc) => {
-    // split working_hours if present like "09:00 - 17:00"
     let start = "";
     let end = "";
     if (doc.working_hours) {
-      const parts = doc.working_hours.split("-").map(p => p.trim());
-      if (parts.length === 2) { start = parts[0]; end = parts[1]; }
+      const parts = doc.working_hours.split("-").map((p) => p.trim());
+      if (parts.length === 2) {
+        start = parts[0];
+        end = parts[1];
+      }
     }
     const isOther = !SPECIALIZATIONS.includes(doc.specialization);
     setForm({
       doctor_code: doc.doctor_code || "",
       full_name: doc.full_name || "",
-      specialization: isOther ? "Other" : (doc.specialization || SPECIALIZATIONS[0]),
+      specialization: isOther
+        ? "Other"
+        : doc.specialization || SPECIALIZATIONS[0],
       other_specialization: isOther ? doc.specialization : "",
       contact_number: doc.contact_number || "",
       email: doc.email || "",
@@ -92,7 +114,7 @@ export default function DoctorsPage() {
       start_time: start,
       end_time: end,
       status: doc.status || "Available",
-      doctor_id: doc.doctor_id
+      doctor_id: doc.doctor_id,
     });
     setEditMode(true);
     setShowModal(true);
@@ -120,11 +142,17 @@ export default function DoctorsPage() {
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
-    // validation
-    if (!form.full_name || !form.email) return alert("Name and email required");
+    if (!form.full_name || !form.email)
+      return alert("Name and email required");
 
-    const specialization = form.specialization === "Other" ? form.other_specialization.trim() : form.specialization;
-    const working_hours = form.start_time && form.end_time ? `${form.start_time} - ${form.end_time}` : null;
+    const specialization =
+      form.specialization === "Other"
+        ? form.other_specialization.trim()
+        : form.specialization;
+    const working_hours =
+      form.start_time && form.end_time
+        ? `${form.start_time} - ${form.end_time}`
+        : null;
 
     const payload = {
       doctor_code: form.doctor_code,
@@ -134,23 +162,25 @@ export default function DoctorsPage() {
       email: form.email,
       department: form.department,
       working_hours,
-      status: form.status
+      status: form.status,
     };
 
     try {
-      const url = editMode ? `http://localhost:5000/api/doctors/${form.doctor_id}` : "http://localhost:5000/api/doctors";
+      const url = editMode
+        ? `http://localhost:5000/api/doctors/${form.doctor_id}`
+        : "http://localhost:5000/api/doctors";
       const method = editMode ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(()=>({message: "Unknown error"}));
+        const body = await res.json().catch(() => ({ message: "Unknown error" }));
         return alert("Save failed: " + (body.message || res.statusText));
       }
 
@@ -171,7 +201,12 @@ export default function DoctorsPage() {
         <div className="p-6 mt-16">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Doctor Management</h1>
-            <button onClick={openAdd} className="bg-blue-600 text-white px-4 py-2 rounded">+ Add Doctor</button>
+            <button
+              onClick={openAdd}
+              className="bg-blue-600 text-white px-4 py-2 rounded"
+            >
+              + Add Doctor
+            </button>
           </div>
 
           <div className="bg-white shadow rounded">
@@ -190,24 +225,48 @@ export default function DoctorsPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} className="p-4 text-center">Loading...</td></tr>
-                ) : doctors.length === 0 ? (
-                  <tr><td colSpan={8} className="p-4 text-center">No doctors found</td></tr>
-                ) : doctors.map(doc => (
-                  <tr key={doc.doctor_id} className="text-sm">
-                    <td className="p-2 border text-center">{doc.doctor_code}</td>
-                    <td className="p-2 border">{doc.full_name}</td>
-                    <td className="p-2 border">{doc.specialization}</td>
-                    <td className="p-2 border">{doc.contact_number}</td>
-                    <td className="p-2 border">{doc.department}</td>
-                    <td className="p-2 border">{doc.working_hours || "-"}</td>
-                    <td className="p-2 border">{doc.status}</td>
-                    <td className="p-2 border flex gap-2 justify-center">
-                      <button onClick={() => openEdit(doc)} className="px-3 py-1 bg-yellow-500 rounded text-white">Edit</button>
-                      <button onClick={() => handleDelete(doc.doctor_id)} className="px-3 py-1 bg-red-600 rounded text-white">Delete</button>
+                  <tr>
+                    <td colSpan={8} className="p-4 text-center">
+                      Loading...
                     </td>
                   </tr>
-                ))}
+                ) : doctors.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-4 text-center">
+                      No doctors found
+                    </td>
+                  </tr>
+                ) : (
+                  doctors.map((doc) => (
+                    <tr key={doc.doctor_id} className="text-sm">
+                      <td className="p-2 border text-center">
+                        {doc.doctor_code}
+                      </td>
+                      <td className="p-2 border">{doc.full_name}</td>
+                      <td className="p-2 border">{doc.specialization}</td>
+                      <td className="p-2 border">{doc.contact_number}</td>
+                      <td className="p-2 border">{doc.department}</td>
+                      <td className="p-2 border">
+                        {doc.working_hours || "-"}
+                      </td>
+                      <td className="p-2 border">{doc.status}</td>
+                      <td className="p-2 border flex gap-2 justify-center">
+                        <button
+                          onClick={() => openEdit(doc)}
+                          className="px-3 py-1 bg-yellow-500 rounded text-white"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(doc.doctor_id)}
+                          className="px-3 py-1 bg-red-600 rounded text-white"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -216,65 +275,154 @@ export default function DoctorsPage() {
         {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <form onSubmit={handleSubmit} className="bg-white w-11/12 md:w-3/4 lg:w-1/2 p-6 rounded shadow">
+            <form
+              onSubmit={handleSubmit}
+              className="bg-white w-11/12 md:w-3/4 lg:w-1/2 p-6 rounded shadow"
+            >
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">{editMode ? "Edit Doctor" : "Add Doctor"}</h2>
-                <button type="button" onClick={() => setShowModal(false)} className="text-gray-600">Close</button>
+                <h2 className="text-xl font-semibold">
+                  {editMode ? "Edit Doctor" : "Add Doctor"}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="text-gray-600"
+                >
+                  Close
+                </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm">Doctor Code</label>
-                  <input className="w-full border p-2 rounded" value={form.doctor_code} onChange={(e)=>setForm({...form, doctor_code: e.target.value})} required />
+                  <input
+                    className="w-full border p-2 rounded"
+                    value={form.doctor_code}
+                    onChange={(e) =>
+                      setForm({ ...form, doctor_code: e.target.value })
+                    }
+                    required
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm">Full Name</label>
-                  <input className="w-full border p-2 rounded" value={form.full_name} onChange={(e)=>setForm({...form, full_name: e.target.value})} required />
+                  <input
+                    className="w-full border p-2 rounded"
+                    value={form.full_name}
+                    onChange={(e) =>
+                      setForm({ ...form, full_name: e.target.value })
+                    }
+                    required
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm">Specialization</label>
-                  <select className="w-full border p-2 rounded" value={form.specialization} onChange={(e)=>setForm({...form, specialization:e.target.value})}>
-                    {SPECIALIZATIONS.map(s=> <option key={s} value={s}>{s}</option>)}
+                  <select
+                    className="w-full border p-2 rounded"
+                    value={form.specialization}
+                    onChange={(e) =>
+                      setForm({ ...form, specialization: e.target.value })
+                    }
+                  >
+                    {SPECIALIZATIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 {form.specialization === "Other" && (
                   <div>
                     <label className="block text-sm">Other Specialization</label>
-                    <input className="w-full border p-2 rounded" value={form.other_specialization} onChange={(e)=>setForm({...form, other_specialization:e.target.value})} required />
+                    <input
+                      className="w-full border p-2 rounded"
+                      value={form.other_specialization}
+                      onChange={(e) =>
+                        setForm({ ...form, other_specialization: e.target.value })
+                      }
+                      required
+                    />
                   </div>
                 )}
 
                 <div>
                   <label className="block text-sm">Contact Number</label>
-                  <input className="w-full border p-2 rounded" value={form.contact_number} onChange={(e)=>setForm({...form, contact_number: e.target.value})} />
+                  <input
+                    className="w-full border p-2 rounded"
+                    value={form.contact_number}
+                    onChange={(e) =>
+                      setForm({ ...form, contact_number: e.target.value })
+                    }
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm">Email</label>
-                  <input type="email" className="w-full border p-2 rounded" value={form.email} onChange={(e)=>setForm({...form, email: e.target.value})} />
+                  <input
+                    type="email"
+                    className="w-full border p-2 rounded"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm({ ...form, email: e.target.value })
+                    }
+                  />
                 </div>
 
+                {/* ✅ Department dropdown */}
                 <div>
                   <label className="block text-sm">Department</label>
-                  <input className="w-full border p-2 rounded" value={form.department} onChange={(e)=>setForm({...form, department: e.target.value})} />
+                  <select
+                    className="w-full border p-2 rounded"
+                    value={form.department}
+                    onChange={(e) =>
+                      setForm({ ...form, department: e.target.value })
+                    }
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map((dept) => (
+                      <option key={dept.department_id} value={dept.department_name}>
+                        {dept.department_name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm">Start Time</label>
-                  <input type="time" className="w-full border p-2 rounded" value={form.start_time} onChange={(e)=>setForm({...form, start_time: e.target.value})} />
+                  <input
+                    type="time"
+                    className="w-full border p-2 rounded"
+                    value={form.start_time}
+                    onChange={(e) =>
+                      setForm({ ...form, start_time: e.target.value })
+                    }
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm">End Time</label>
-                  <input type="time" className="w-full border p-2 rounded" value={form.end_time} onChange={(e)=>setForm({...form, end_time: e.target.value})} />
+                  <input
+                    type="time"
+                    className="w-full border p-2 rounded"
+                    value={form.end_time}
+                    onChange={(e) =>
+                      setForm({ ...form, end_time: e.target.value })
+                    }
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm">Status</label>
-                  <select className="w-full border p-2 rounded" value={form.status} onChange={(e)=>setForm({...form, status: e.target.value})}>
+                  <select
+                    className="w-full border p-2 rounded"
+                    value={form.status}
+                    onChange={(e) =>
+                      setForm({ ...form, status: e.target.value })
+                    }
+                  >
                     <option>Available</option>
                     <option>On Leave</option>
                   </select>
@@ -282,8 +430,19 @@ export default function DoctorsPage() {
               </div>
 
               <div className="mt-4 flex justify-end gap-3">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">{editMode ? "Update" : "Save"}</button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 border rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-600 text-white rounded"
+                >
+                  {editMode ? "Update" : "Save"}
+                </button>
               </div>
             </form>
           </div>
